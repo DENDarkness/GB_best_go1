@@ -2,17 +2,21 @@ package main
 
 import (
 	"context"
+	"flag"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
+
+var inc int64
 
 type CrawlResult struct {
 	Err   error
@@ -87,12 +91,12 @@ func (r requester) Get(ctx context.Context, url string) (Page, error) {
 		}
 		return page, nil
 	}
-	return nil, nil
+//	return nil, nil - недостижима строка.
 }
 
 //Crawler - интерфейс (контракт) краулера
 type Crawler interface {
-	Scan(ctx context.Context, url string, depth int)
+	Scan(ctx context.Context, url string, depth int64)
 	ChanResult() <-chan CrawlResult
 }
 
@@ -112,7 +116,13 @@ func NewCrawler(r Requester) *crawler {
 	}
 }
 
-func (c *crawler) Scan(ctx context.Context, url string, depth int) {
+func (c *crawler) Scan(ctx context.Context, url string, depth int64) {
+
+	if inc != 0 {
+		atomic.AddInt64(&depth, inc)
+		inc = 0
+	}
+
 	if depth <= 0 { //Проверяем то, что есть запас по глубине
 		return
 	}
@@ -139,6 +149,7 @@ func (c *crawler) Scan(ctx context.Context, url string, depth int) {
 			Url:   url,
 		}
 		for _, link := range page.GetLinks() {
+			time.Sleep(10 * time.Second)
 			go c.Scan(ctx, link, depth-1) //На все полученные ссылки запускаем новую рутину сборки
 		}
 	}
@@ -150,7 +161,7 @@ func (c *crawler) ChanResult() <-chan CrawlResult {
 
 //Config - структура для конфигурации
 type Config struct {
-	MaxDepth   int
+	MaxDepth   int64
 	MaxResults int
 	MaxErrors  int
 	Url        string
@@ -159,11 +170,14 @@ type Config struct {
 
 func main() {
 
+	t := flag.Duration("t", 30 * time.Second, "maximum program execution time" )
+	flag.Parse()
+
 	cfg := Config{
 		MaxDepth:   3,
 		MaxResults: 10,
 		MaxErrors:  5,
-		Url:        "https://telegram.org",
+		Url:        "https://telegram.com",
 		Timeout:    10,
 	}
 	var cr Crawler
@@ -172,18 +186,25 @@ func main() {
 	r = NewRequester(time.Duration(cfg.Timeout) * time.Second)
 	cr = NewCrawler(r)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	//ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(*t))
 	go cr.Scan(ctx, cfg.Url, cfg.MaxDepth) //Запускаем краулер в отдельной рутине
 	go processResult(ctx, cancel, cr, cfg) //Обрабатываем результаты в отдельной рутине
 
 	sigCh := make(chan os.Signal)        //Создаем канал для приема сигналов
-	signal.Notify(sigCh, syscall.SIGINT) //Подписываемся на сигнал SIGINT
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGUSR1) //Подписываемся на сигнал SIGINT
 	for {
 		select {
 		case <-ctx.Done(): //Если всё завершили - выходим
 			return
-		case <-sigCh:
-			cancel() //Если пришёл сигнал SigInt - завершаем контекст
+		case s := <-sigCh:
+			if s == syscall.SIGINT {
+				cancel() //Если пришёл сигнал SigInt - завершаем контекст
+			}
+			if s == syscall.SIGUSR1 {
+				inc = 2
+			}
+
 		}
 	}
 }
