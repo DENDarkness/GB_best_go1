@@ -16,8 +16,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-var inc int64
-
 type CrawlResult struct {
 	Err   error
 	Title string
@@ -96,36 +94,38 @@ func (r requester) Get(ctx context.Context, url string) (Page, error) {
 
 //Crawler - интерфейс (контракт) краулера
 type Crawler interface {
-	Scan(ctx context.Context, url string, depth int64)
+	Scan(ctx context.Context, url string, inc int64)
 	ChanResult() <-chan CrawlResult
+	AddDepth()
 }
 
 type crawler struct {
-	r       Requester
-	res     chan CrawlResult
-	visited map[string]struct{}
-	mu      sync.RWMutex
+	r        Requester
+	maxDepth int64
+	res      chan CrawlResult
+	visited  map[string]struct{}
+	mu       sync.RWMutex
 }
 
-func NewCrawler(r Requester) *crawler {
+func NewCrawler(r Requester, depth int64) *crawler {
 	return &crawler{
 		r:       r,
+		maxDepth: depth,
 		res:     make(chan CrawlResult),
 		visited: make(map[string]struct{}),
 		mu:      sync.RWMutex{},
 	}
 }
 
-func (c *crawler) Scan(ctx context.Context, url string, depth int64) {
+func (c *crawler) Scan(ctx context.Context, url string, inc int64) {
 
-	if inc != 0 {
-		atomic.AddInt64(&depth, inc)
-		inc = 0
-	}
+	time.Sleep(10 * time.Second)
+//	fmt.Printf("maxDepth: %d, inc: %d\n", c.maxDepth, inc)
 
-	if depth <= 0 { //Проверяем то, что есть запас по глубине
+	if c.maxDepth <= inc {
 		return
 	}
+
 	c.mu.RLock()
 	_, ok := c.visited[url] //Проверяем, что мы ещё не смотрели эту страницу
 	c.mu.RUnlock()
@@ -148,15 +148,21 @@ func (c *crawler) Scan(ctx context.Context, url string, depth int64) {
 			Title: page.GetTitle(),
 			Url:   url,
 		}
+
+		atomic.AddInt64(&inc, 1)
+
 		for _, link := range page.GetLinks() {
-			time.Sleep(10 * time.Second)
-			go c.Scan(ctx, link, depth-1) //На все полученные ссылки запускаем новую рутину сборки
+			go c.Scan(ctx, link, inc) //На все полученные ссылки запускаем новую рутину сборки
 		}
 	}
 }
 
 func (c *crawler) ChanResult() <-chan CrawlResult {
 	return c.res
+}
+
+func (c *crawler) AddDepth() {
+	c.maxDepth += 2
 }
 
 //Config - структура для конфигурации
@@ -170,7 +176,7 @@ type Config struct {
 
 func main() {
 
-	t := flag.Duration("t", 30 * time.Second, "maximum program execution time" )
+	t := flag.Duration("t", 60 * time.Second, "maximum program execution time" )
 	flag.Parse()
 
 	cfg := Config{
@@ -184,11 +190,11 @@ func main() {
 	var r Requester
 
 	r = NewRequester(time.Duration(cfg.Timeout) * time.Second)
-	cr = NewCrawler(r)
+	cr = NewCrawler(r, cfg.MaxDepth)
 
 	//ctx, cancel := context.WithCancel(context.Background())
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(*t))
-	go cr.Scan(ctx, cfg.Url, cfg.MaxDepth) //Запускаем краулер в отдельной рутине
+	go cr.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
 	go processResult(ctx, cancel, cr, cfg) //Обрабатываем результаты в отдельной рутине
 
 	sigCh := make(chan os.Signal)        //Создаем канал для приема сигналов
@@ -202,7 +208,7 @@ func main() {
 				cancel() //Если пришёл сигнал SigInt - завершаем контекст
 			}
 			if s == syscall.SIGUSR1 {
-				inc = 2
+				cr.AddDepth()
 			}
 
 		}
