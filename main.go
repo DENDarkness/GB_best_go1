@@ -87,7 +87,8 @@ func (r requester) Get(ctx context.Context, url string) (Page, error) {
 		if err != nil {
 			return nil, err
 		}
-		return page, nil
+		p := NewLoggerPageWrap(page)
+		return p, nil
 	}
 //	return nil, nil - недостижима строка.
 }
@@ -119,7 +120,7 @@ func NewCrawler(r Requester, depth int64) *crawler {
 
 func (c *crawler) Scan(ctx context.Context, url string, inc int64) {
 
-	time.Sleep(10 * time.Second)
+	//time.Sleep(10 * time.Second)
 //	fmt.Printf("maxDepth: %d, inc: %d\n", c.maxDepth, inc)
 
 	if c.maxDepth <= inc {
@@ -182,7 +183,7 @@ func main() {
 	cfg := Config{
 		MaxDepth:   3,
 		MaxResults: 10,
-		MaxErrors:  5,
+		MaxErrors:  500,
 		Url:        "https://telegram.com",
 		Timeout:    10,
 	}
@@ -190,12 +191,15 @@ func main() {
 	var r Requester
 
 	r = NewRequester(time.Duration(cfg.Timeout) * time.Second)
-	cr = NewCrawler(r, cfg.MaxDepth)
+	rl := NewLoggerRequesterWrap(r)
+	cr = NewCrawler(rl, cfg.MaxDepth)
+	crw := NewDelayCrawlerWrap(30, cr)
+	crl := NewLoggerCrawlerWrap(crw)
 
 	//ctx, cancel := context.WithCancel(context.Background())
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(*t))
-	go cr.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
-	go processResult(ctx, cancel, cr, cfg) //Обрабатываем результаты в отдельной рутине
+	go crl.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
+	go processResult(ctx, cancel, crl, cfg) //Обрабатываем результаты в отдельной рутине
 
 	sigCh := make(chan os.Signal)        //Создаем канал для приема сигналов
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGUSR1) //Подписываемся на сигнал SIGINT
