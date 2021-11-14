@@ -19,19 +19,19 @@ func NewLoggerCrawlerWrap(crawler Crawler, logger  *zap.SugaredLogger) *loggerCr
 }
 
 func (lw *loggerCrawlerWrap)  Scan(ctx context.Context, url string, inc int64) {
-	lw.logger.Infof("Call Crawler -> Scan(%v, %d)", ctx, inc)
+	lw.logger.Debugf("Call Crawler -> Scan(%v, %d)", ctx, inc)
 	lw.crawler.Scan(ctx, url, inc)
 }
 
 func (lw *loggerCrawlerWrap) ChanResult() <-chan CrawlResult {
-	lw.logger.Info("Call Crawler -> ChanResult()")
+	lw.logger.Debugf("Call Crawler -> ChanResult()")
 	res := lw.crawler.ChanResult()
-	lw.logger.Infof("Result ChanResult: %v", res)
+	lw.logger.Debugf("Result ChanResult: %v", res)
 	return res
 }
 
 func (lw *loggerCrawlerWrap) AddDepth() {
-	lw.logger.Info("Call Crawler -> AddDepth()")
+	lw.logger.Debugf("Call Crawler -> AddDepth()")
 	lw.crawler.AddDepth()
 }
 
@@ -48,9 +48,9 @@ func NewLoggerRequesterWrap(r Requester, logger *zap.SugaredLogger) *loggerReque
 }
 
 func (lw *loggerRequesterWrap) Get(ctx context.Context, url string) (Page, error) {
-	lw.logger.Infof("Call Requester -> Get(%v, %s)", ctx, url)
+	lw.logger.Debugf("Call Requester -> Get(%v, %s)", ctx, url)
 	p, err := lw.requester.Get(ctx, url)
-	lw.logger.Infof("Result Get: %v, %v", p, err)
+	lw.logger.Debugf("Result Get: %v, %v", p, err)
 	return p, err
 }
 
@@ -68,15 +68,15 @@ func NewLoggerPageWrap(page Page, logger *zap.SugaredLogger) *loggerPageWrap {
 
 
 func (lw *loggerPageWrap) GetTitle() string {
-	lw.logger.Info("Call Page -> GetTitle()")
+	lw.logger.Debugf("Call Page -> GetTitle()")
 	s := lw.page.GetTitle()
-	lw.logger.Infof("Result GetTitle: %s", s)
+	lw.logger.Debugf("Result GetTitle: %s", s)
 	return s
 }
 
 func (lw *loggerPageWrap) GetLinks() []string {
-	lw.logger.Info("Call Page -> GetLinks()")
+	lw.logger.Debugf("Call Page -> GetLinks()")
 	s := lw.page.GetLinks()
-	lw.logger.Infof("Result GetLinks: %v", s)
+	lw.logger.Debugf("Result GetLinks: %v", s)
 	return s
 }
