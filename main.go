@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"go.uber.org/zap"
 )
 
 type CrawlResult struct {
@@ -60,10 +61,14 @@ type Requester interface {
 
 type requester struct {
 	timeout time.Duration
+	logger *zap.SugaredLogger
 }
 
-func NewRequester(timeout time.Duration) requester {
-	return requester{timeout: timeout}
+func NewRequester(timeout time.Duration, logger *zap.SugaredLogger) requester {
+	return requester{
+		timeout: timeout,
+		logger: logger,
+	}
 }
 
 func (r requester) Get(ctx context.Context, url string) (Page, error) {
@@ -87,7 +92,7 @@ func (r requester) Get(ctx context.Context, url string) (Page, error) {
 		if err != nil {
 			return nil, err
 		}
-		p := NewLoggerPageWrap(page)
+		p := NewLoggerPageWrap(page, r.logger)
 		return p, nil
 	}
 //	return nil, nil - недостижима строка.
@@ -189,14 +194,19 @@ func main() {
 	}
 	var cr Crawler
 	var r Requester
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatal(err)
+	}
+	sugar := logger.Sugar()
+	defer logger.Sync()
 
-	r = NewRequester(time.Duration(cfg.Timeout) * time.Second)
-	rl := NewLoggerRequesterWrap(r)
+	r = NewRequester(time.Duration(cfg.Timeout) * time.Second, sugar)
+	rl := NewLoggerRequesterWrap(r, sugar)
 	cr = NewCrawler(rl, cfg.MaxDepth)
 	crw := NewDelayCrawlerWrap(30, cr)
-	crl := NewLoggerCrawlerWrap(crw)
+	crl := NewLoggerCrawlerWrap(crw, sugar)
 
-	//ctx, cancel := context.WithCancel(context.Background())
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(*t))
 	go crl.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
 	go processResult(ctx, cancel, crl, cfg) //Обрабатываем результаты в отдельной рутине
