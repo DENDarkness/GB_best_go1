@@ -11,6 +11,7 @@ type {{$decorator}} struct {
     base {{.Interface.Type}}
 }
 
+
 func New{{$decorator}}(base {{.Interface.Type}}, log *zap.SugaredLogger) {{$decorator}} {
     return {{$decorator}}{
         base: base,
