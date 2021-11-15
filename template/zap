@@ -1,0 +1,50 @@
+import (
+	"context"
+
+	"go.uber.org/zap"
+)
+
+{{ $decorator := (or .Vars.DecoratorName (printf "logger%sWrap" .Interface.Name))}}
+
+type {{$decorator}} struct {
+    logger *zap.SugaredLogger
+    base {{.Interface.Type}}
+}
+
+func New{{$decorator}}(base {{.Interface.Type}}, log *zap.SugaredLogger) {{$decorator}} {
+    return {{$decorator}}{
+        base: base,
+        logger: log,
+    }
+}
+
+{{range $method := .Interface.Methods}}
+    func (d {{$decorator}}) {{$method.Declaration}} {
+        {{- if $method.HasParams}}
+            {{- if $method.HasResults}}
+                d.logger.Debug("Call {{$.Interface.Type}} -> {{$method.Declaration}}")
+                res, err := d.base.{{$method.Call}}
+                d.logger.Debugf("Result {{$method.Name}}: %v, %v", res, err)
+                d.base.{{$method.Call}}
+                return res, err
+            {{else}}
+                d.logger.Debug("Call {{$.Interface.Type}} -> {{$method.Declaration}}")
+                d.base.{{$method.Call}}
+                {{ $method.ResultsNames }}
+            {{end}}
+        {{else}}
+            {{- if $method.HasResults}}
+                d.logger.Debug("Call {{$.Interface.Type}} -> {{$method.Declaration}}")
+                res := d.base.{{$method.Call}}
+                d.logger.Debugf("Result {{$method.Name}}: %v", res)
+                return res
+            {{else}}
+                d.logger.Debug("Call {{$.Interface.Type}} -> {{$method.Declaration}}")
+                d.base.{{$method.Call}}
+                {{ $method.ResultsNames }}
+            {{end -}}
+        {{end -}}
+
+    }
+{{end}}
+
