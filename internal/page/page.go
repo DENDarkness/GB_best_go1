@@ -1,6 +1,7 @@
 package page
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/PuerkitoBio/goquery"
@@ -32,6 +33,7 @@ func (p *page) GetLinks() []string {
 	p.doc.Find("a").Each(func(_ int, s *goquery.Selection) {
 		url, ok := s.Attr("href")
 		if ok {
+			fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", url, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 			urls = append(urls, url)
 		}
 	})

@@ -2,7 +2,6 @@ package requester
 
 import (
 	"context"
-	"lesson1/internal/loggerDebugWrap"
 	"lesson1/internal/page"
 	"net/http"
 	"time"
@@ -53,7 +52,7 @@ func (r requester) Get(ctx context.Context, url string) (page.Page, error) {
 			return nil, err
 		}
 		if r.debugType {
-			p := loggerDebugWrap.NewloggerPageWrap(page, r.logger)
+			p := page.NewloggerPageWrap(page, r.logger)
 			return p, nil
 		}
 

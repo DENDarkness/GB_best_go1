@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"lesson1/internal/crawler"
-	"lesson1/internal/loggerDebugWrap"
 	"lesson1/internal/requester"
 	"log"
 	"os"
@@ -50,9 +49,9 @@ func main() {
 
 	if *debug {
 		r = requester.NewRequester(time.Duration(cfg.Timeout) * time.Second, logger, *debug)
-		rl := loggerDebugWrap.NewloggerRequesterWrap(r, logger)
+		rl := requester.NewloggerRequesterWrap(r, logger)
 		cr = crawler.NewCrawler(rl, cfg.MaxDepth)
-		crl := loggerDebugWrap.NewloggerCrawlerWrap(cr, logger)
+		crl := crawler.NewloggerCrawlerWrap(cr, logger)
 		go crl.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
 		go processResult(ctx, cancel, crl, cfg, logger) //Обрабатываем результаты в отдельной рутине
 	}
