@@ -46,16 +46,17 @@ func (r requester) Get(ctx context.Context, url string) (page.Page, error) {
 			return nil, err
 		}
 		defer body.Body.Close()
-		page, err := page.NewPage(body.Body)
+		pg, err := page.NewPage(body.Body)
 		if err != nil {
 			r.logger.Errorf("Failed to create the NewPage: %v", err)
 			return nil, err
 		}
 		if r.debugType {
-			p := page.NewloggerPageWrap(page, r.logger)
+
+			p := page.NewloggerPageWrap(pg, r.logger)
 			return p, nil
 		}
 
-		return page, nil
+		return pg, nil
 	}
 }
