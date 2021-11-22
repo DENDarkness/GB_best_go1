@@ -3,6 +3,7 @@ package page
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -33,8 +34,18 @@ func (p *page) GetLinks() []string {
 	p.doc.Find("a").Each(func(_ int, s *goquery.Selection) {
 		url, ok := s.Attr("href")
 		if ok {
-			fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", url, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-			urls = append(urls, url)
+			 if strings.HasPrefix(url, "/") {
+				url = fmt.Sprintf( "https://www.telegram.com%s", url)
+				urls = append(urls, url)
+				 return
+			}
+			if strings.HasPrefix(url, "mailto") {
+				return
+			}
+			if strings.HasPrefix(url, "#") {
+				return
+			}
+				urls = append(urls, url)
 		}
 	})
 	return urls
