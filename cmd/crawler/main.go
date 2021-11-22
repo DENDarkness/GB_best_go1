@@ -27,6 +27,7 @@ func main() {
 
 	debug := flag.Bool("debug", false, "Debug mode" )
 	t := flag.Duration("t", time.Minute, "Maximum program execution time")
+
 	flag.Parse()
 
 	cfg := Config{

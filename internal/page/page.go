@@ -14,15 +14,18 @@ type Page interface {
 }
 
 type page struct {
+	urlSearch string
 	doc *goquery.Document
 }
 
-func NewPage(raw io.Reader) (Page, error) {
+func NewPage(raw io.Reader, u string) (Page, error) {
 	doc, err := goquery.NewDocumentFromReader(raw)
 	if err != nil {
 		return nil, err
 	}
-	return &page{doc: doc}, nil
+	return &page{
+		urlSearch: u,
+		doc: doc}, nil
 }
 
 func (p *page) GetTitle() string {
@@ -35,7 +38,7 @@ func (p *page) GetLinks() []string {
 		url, ok := s.Attr("href")
 		if ok {
 			 if strings.HasPrefix(url, "/") {
-				url = fmt.Sprintf( "https://www.telegram.com%s", url)
+				url = fmt.Sprintf( "%s%s", p.urlSearch, url)
 				urls = append(urls, url)
 				 return
 			}

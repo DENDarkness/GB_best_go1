@@ -46,7 +46,7 @@ func (r requester) Get(ctx context.Context, url string) (page.Page, error) {
 			return nil, err
 		}
 		defer body.Body.Close()
-		pg, err := page.NewPage(body.Body)
+		pg, err := page.NewPage(body.Body, url)
 		if err != nil {
 			r.logger.Errorf("Failed to create the NewPage: %v", err)
 			return nil, err
