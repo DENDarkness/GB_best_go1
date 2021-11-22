@@ -25,20 +25,26 @@ type Config struct {
 
 func main() {
 
-	debug := flag.Bool("debug", false, "Debug mode" )
-	t := flag.Duration("t", time.Minute, "Maximum program execution time")
-
+	debug := flag.Bool("debug", false, "debug mode" )
+	t := flag.Duration("t", time.Minute, "maximum program execution time")
+	url := flag.String("url", "https://telegram.com", "url to parser")
+	d := flag.Int64("d", 5, "maximum entry depth")
+	e := flag.Int("e", 5, "maximum number of errors")
+	r := flag.Int("r", 15, "maximum number of results")
 	flag.Parse()
 
+	//TODO: проверять правильность урла...
+
 	cfg := Config{
-		MaxDepth:   5,
-		MaxResults: 15,
-		MaxErrors:  5,
-		Url:        "https://telegram.com",
+		MaxDepth:   *d,
+		MaxResults: *r,
+		MaxErrors:  *e,
+		Url:        *url,
 		Timeout:    10,
 	}
+
 	var cr crawler.Crawler
-	var r requester.Requester
+	var req requester.Requester
 	l, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatal(err)
@@ -49,16 +55,16 @@ func main() {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(*t))
 
 	if *debug {
-		r = requester.NewRequester(time.Duration(cfg.Timeout) * time.Second, logger, *debug)
-		rl := requester.NewloggerRequesterWrap(r, logger)
+		req = requester.NewRequester(time.Duration(cfg.Timeout) * time.Second, logger, *debug)
+		rl := requester.NewloggerRequesterWrap(req, logger)
 		cr = crawler.NewCrawler(rl, cfg.MaxDepth)
 		crl := crawler.NewloggerCrawlerWrap(cr, logger)
 		go crl.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
 		go processResult(ctx, cancel, crl, cfg, logger) //Обрабатываем результаты в отдельной рутине
 	}
 
-	r = requester.NewRequester(time.Duration(cfg.Timeout) * time.Second, logger, *debug)
-	cr = crawler.NewCrawler(r, cfg.MaxDepth)
+	req = requester.NewRequester(time.Duration(cfg.Timeout) * time.Second, logger, *debug)
+	cr = crawler.NewCrawler(req, cfg.MaxDepth)
 	go cr.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
 	go processResult(ctx, cancel, cr, cfg, logger) //Обрабатываем результаты в отдельной рутине
 

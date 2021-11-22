@@ -42,10 +42,8 @@ func (p *page) GetLinks() []string {
 				urls = append(urls, url)
 				 return
 			}
-			if strings.HasPrefix(url, "mailto") {
-				return
-			}
-			if strings.HasPrefix(url, "#") {
+			// TODO: возможно нужна другая логика по обработки.
+			if strings.HasPrefix(url, "mailto") || strings.HasPrefix(url, "#") || strings.HasPrefix(url, "./") || strings.HasPrefix(url, "") {
 				return
 			}
 				urls = append(urls, url)
