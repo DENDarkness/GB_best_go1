@@ -61,12 +61,12 @@ func main() {
 		crl := crawler.NewloggerCrawlerWrap(cr, logger)
 		go crl.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
 		go processResult(ctx, cancel, crl, cfg, logger) //Обрабатываем результаты в отдельной рутине
+	} else {
+		req = requester.NewRequester(time.Duration(cfg.Timeout) * time.Second, logger, *debug)
+		cr = crawler.NewCrawler(req, cfg.MaxDepth)
+		go cr.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
+		go processResult(ctx, cancel, cr, cfg, logger) //Обрабатываем результаты в отдельной рутине
 	}
-
-	req = requester.NewRequester(time.Duration(cfg.Timeout) * time.Second, logger, *debug)
-	cr = crawler.NewCrawler(req, cfg.MaxDepth)
-	go cr.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
-	go processResult(ctx, cancel, cr, cfg, logger) //Обрабатываем результаты в отдельной рутине
 
 	sigCh := make(chan os.Signal)        //Создаем канал для приема сигналов
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGUSR1) //Подписываемся на сигнал SIGINT
