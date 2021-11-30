@@ -14,13 +14,13 @@ import (
 	"go.uber.org/zap"
 )
 
-//Config - структура для конфигурации
+// Config - структура для конфигурации
 type Config struct {
 	MaxDepth   int64
 	MaxResults int
 	MaxErrors  int
 	Url        string
-	Timeout    int //in seconds
+	Timeout    int // in seconds
 }
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 	r := flag.Int("r", 15, "maximum number of results")
 	flag.Parse()
 
-	//TODO: проверять правильность урла...
+	// TODO: проверять правильность урла...
 
 	cfg := Config{
 		MaxDepth:   *d,
@@ -59,25 +59,25 @@ func main() {
 		rl := requester.NewloggerRequesterWrap(req, logger)
 		cr = crawler.NewCrawler(rl, cfg.MaxDepth)
 		crl := crawler.NewloggerCrawlerWrap(cr, logger)
-		go crl.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
-		go processResult(ctx, cancel, crl, cfg, logger) //Обрабатываем результаты в отдельной рутине
+		go crl.Scan(ctx, cfg.Url, 1) // запускаем краулер в отдельной рутине
+		go processResult(ctx, cancel, crl, cfg, logger) // обрабатываем результаты в отдельной рутине
 	} else {
 		req = requester.NewRequester(time.Duration(cfg.Timeout) * time.Second, logger, *debug)
 		cr = crawler.NewCrawler(req, cfg.MaxDepth)
-		go cr.Scan(ctx, cfg.Url, 1) //Запускаем краулер в отдельной рутине
-		go processResult(ctx, cancel, cr, cfg, logger) //Обрабатываем результаты в отдельной рутине
+		go cr.Scan(ctx, cfg.Url, 1) // запускаем краулер в отдельной рутине
+		go processResult(ctx, cancel, cr, cfg, logger) // обрабатываем результаты в отдельной рутине
 	}
 
-	sigCh := make(chan os.Signal)        //Создаем канал для приема сигналов
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGUSR1) //Подписываемся на сигнал SIGINT
+	sigCh := make(chan os.Signal)        // создаем канал для приема сигналов
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGUSR1) // подписываемся на сигнал SIGINT
 	for {
 		select {
-		case <-ctx.Done(): //Если всё завершили - выходим
+		case <-ctx.Done(): // если всё завершили - выходим
 			return
 		case s := <-sigCh:
 			if s == syscall.SIGINT {
 				logger.Info("Stop the program")
-				cancel() //Если пришёл сигнал SigInt - завершаем контекст
+				cancel() // если пришёл сигнал SigInt - завершаем контекст
 			}
 			if s == syscall.SIGUSR1 {
 				logger.Info("Increase the depth by two")
